@@ -59,13 +59,26 @@ def request_refresh_osm_location_data(nations: list[str], states: list[str] | No
   params.put("OsmDownloadedDate", str(datetime.now().timestamp()))
   params.put_bool("OsmDbUpdatesCheck", False)
 
+  states = states or []
+  locations_to_download: list[str] = []
+  for nation in nations:
+    if nation == "US" and states:
+      for state in states:
+        locations_to_download.append(f"nation.US.{state}")
+    else:
+      locations_to_download.append(f"nation.{nation}")
+
   osm_download_locations = {
     "nations": nations,
-    "states": states or []
+    "states": states,
+    # Compatibility fields for newer mapd variants that use explicit area paths.
+    "locations_to_download": locations_to_download,
+    "locationsToDownload": locations_to_download,
   }
 
   print(f"Downloading maps for {json.dumps(osm_download_locations)}")
   mem_params.put("OSMDownloadLocations", osm_download_locations)
+  params.put("OSMDownloadLocations", osm_download_locations)
 
 
 def filter_nations_and_states(nations: list[str], states: list[str] | None = None) -> tuple[list[str], list[str]]:
@@ -86,14 +99,17 @@ def filter_nations_and_states(nations: list[str], states: list[str] | None = Non
   tuple: Two lists. The first list is filtered nations and the second list is filtered states.
   """
 
-  if "US" in nations and states and not any(x.lower() == "all" for x in states):
-    # If a specific state in the US is provided, remove 'US' from nations
-    nations.remove("US")
-  elif "US" in nations and states and any(x.lower() == "all" for x in states):
+  if "US" in nations and states and any(x.lower() == "all" for x in states):
     # If 'All' is provided as a state (case invariant), remove those instances from states
     states = [x for x in states if x.lower() != "all"]
   elif "US" not in nations and states and any(x.lower() == "all" for x in states):
     states.remove("All")
+
+  # Some mapd versions require the parent nation to be present when states are supplied.
+  # If we have explicit US states but no nation, default to US.
+  if states and not nations:
+    nations = ["US"]
+
   return nations, states or []
 
 
@@ -142,4 +158,3 @@ def main():
 
 if __name__ == "__main__":
   main()
-
