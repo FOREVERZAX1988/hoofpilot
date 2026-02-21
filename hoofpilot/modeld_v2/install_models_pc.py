@@ -3,7 +3,6 @@ import sys
 import shutil
 import pickle
 import codecs
-import onnx
 from pathlib import Path
 
 from openpilot.system.hardware.hw import Paths
@@ -23,6 +22,7 @@ def get_metadata_value_by_name(model, name):
 
 def generate_metadata_pkl(model_path, output_path):
   try:
+    import onnx
     model = onnx.load(str(model_path))
     output_slices = get_metadata_value_by_name(model, 'output_slices')
 
