@@ -75,6 +75,13 @@ class OSMLayout(Widget):
   def _update_map_size(self):
     threading.Thread(target=self.calculate_size, daemon=True).start()
 
+  @staticmethod
+  def _as_int(value):
+    try:
+      return int(value)
+    except (TypeError, ValueError):
+      return 0
+
   def _do_delete_maps(self):
     if MAP_PATH.exists():
       shutil.rmtree(MAP_PATH)
@@ -153,7 +160,11 @@ class OSMLayout(Widget):
     gui_app.set_modal_overlay(dialog, callback=lambda res: self._handle_region_selection(region_type, locations, key, res, dialog.selection_ref))
 
   def _update_labels(self):
-    downloading = bool(self._mem_params.get("OSMDownloadLocations"))
+    progress = self._mem_params.get("OSMDownloadProgress") or ui_state.params.get("OSMDownloadProgress")
+    progress = progress if isinstance(progress, dict) else {}
+
+    legacy_downloading = bool(self._mem_params.get("OSMDownloadLocations"))
+    downloading = bool(progress.get("active")) if isinstance(progress.get("active"), bool) else legacy_downloading
     self._country_btn.set_enabled(not downloading)
     self._state_btn.set_enabled(not downloading)
     self._state_btn.set_visible(ui_state.params.get("OsmLocationName") == "US")
@@ -168,10 +179,10 @@ class OSMLayout(Widget):
         device._reset_interactive_timeout()
         self._update_map_size()
       self._progress.set_visible(True)
-      progress = ui_state.params.get("OSMDownloadProgress")
-      total = progress.get('total_files', 0) if progress else 0
-      done = progress.get('downloaded_files', 0) if progress else 0
-      failed = total > 0 and not downloading and done < total
+      total = self._as_int(progress.get("total_files", progress.get("totalFiles", 0)) or 0)
+      done = self._as_int(progress.get("downloaded_files", progress.get("downloadedFiles", 0)) or 0)
+      cancelled = bool(progress.get("cancelled", False))
+      failed = cancelled or (total > 0 and not downloading and done < total)
 
       if total > 0:
         progress_perc = max(0.0, min(100.0, (done / total) * 100.0))
@@ -230,4 +241,3 @@ class OSMLayout(Widget):
 
   def _render(self, rect):
     self._scroller.render(rect)
-
