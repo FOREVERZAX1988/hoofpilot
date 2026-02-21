@@ -14,7 +14,7 @@ from openpilot.common.params import Params
 from openpilot.common.swaglog import cloudlog
 from hoofpilot import PARAMS_UPDATE_PERIOD
 from hoofpilot.livedelay.helpers import get_lat_delay
-from hoofpilot.modeld.modeld_base import ModelStateBase
+from hoofpilot.modeld_v2.modeld_base import ModelStateBase
 from hoofpilot.selfdrive.controls.lib.blinker_pause_lateral import BlinkerPauseLateral
 
 
@@ -97,4 +97,3 @@ class ControlsExt(ModelStateBase):
   def run_ext(self, sm: messaging.SubMaster, pm: messaging.PubMaster) -> None:
     CC_SP = self.state_control_ext(sm)
     self.publish_ext(CC_SP, sm, pm)
-

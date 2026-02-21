@@ -14,8 +14,7 @@ import shutil
 import numpy as np
 from openpilot.common.params import Params
 from cereal import custom
-from hoofpilot.modeld.constants import Meta, MetaTombRaider, MetaSimPose
-from hoofpilot.modeld.runners import ModelRunner
+from hoofpilot.modeld_v2.constants import Meta, MetaTombRaider, MetaSimPose
 from openpilot.system.hardware import PC
 from openpilot.system.hardware.hw import Paths
 from pathlib import Path
@@ -34,6 +33,10 @@ METADATA_PATH = Path(__file__).parent / '../models/supercombo_metadata.pkl'
 os.makedirs(MODELS_CACHE_PATH, exist_ok=True)
 
 ModelManager = custom.ModelManagerSP
+
+class ModelPathType:
+  THNEED = "THNEED"
+  ONNX = "ONNX"
 
 def fetch_and_cache_file(url, sha256, out_path):
   """Download file from url to out_path and verify sha256."""
@@ -164,14 +167,25 @@ def get_active_model_runner(params: Params = None, force_check=False) -> custom.
     params = Params()
 
   if (cached_runner_type := params.get("ModelRunnerTypeCache")) and not force_check:
+    parsed_cached_runner_type = None
     if isinstance(cached_runner_type, str) and cached_runner_type.isdigit():
-      return int(cached_runner_type)
+      parsed_cached_runner_type = int(cached_runner_type)
+    elif isinstance(cached_runner_type, int):
+      parsed_cached_runner_type = cached_runner_type
+
+    if parsed_cached_runner_type is not None:
+      if parsed_cached_runner_type == custom.ModelManagerSP.Runner.snpe:
+        parsed_cached_runner_type = custom.ModelManagerSP.Runner.tinygrad
+        params.put("ModelRunnerTypeCache", int(parsed_cached_runner_type))
+      return parsed_cached_runner_type
 
   runner_type = custom.ModelManagerSP.Runner.stock
 
   if active_bundle := get_active_bundle(params):
     runner_str = active_bundle.get('runner', 'stock') if isinstance(active_bundle, dict) else active_bundle.runner.raw
     runner_type = getattr(custom.ModelManagerSP.Runner, runner_str, custom.ModelManagerSP.Runner.stock)
+    if runner_type == custom.ModelManagerSP.Runner.snpe:
+      runner_type = custom.ModelManagerSP.Runner.tinygrad
 
   if cached_runner_type != runner_type:
     params.put("ModelRunnerTypeCache", int(runner_type))
@@ -182,12 +196,12 @@ def get_active_model_runner(params: Params = None, force_check=False) -> custom.
 # New model fetcher logic for new repo structure
 def get_model_path():
   if USE_ONNX:
-    return {ModelRunner.ONNX: Path(__file__).parent / '../models/supercombo.onnx'}
+    return {ModelPathType.ONNX: Path(__file__).parent / '../models/supercombo.onnx'}
   bundle = get_active_bundle()
   if bundle:
     art_path, _ = fetch_and_cache_model_files(bundle)
-    return {ModelRunner.THNEED: art_path}
-  return {ModelRunner.THNEED: Path(__file__).parent / '../models/supercombo.thneed'}
+    return {ModelPathType.THNEED: art_path}
+  return {ModelPathType.THNEED: Path(__file__).parent / '../models/supercombo.thneed'}
 
 def load_metadata():
   bundle = get_active_bundle()
@@ -267,4 +281,3 @@ def plan_x_idxs_helper(constants, plan, model_output) -> list[float]:
       next_x_val - current_x_val) > 1e-9 else float('nan')
     LINE_T_IDXS[xidx] = p * constants.T_IDXS[tidx + 1] + (1 - p) * constants.T_IDXS[tidx]
   return LINE_T_IDXS
-

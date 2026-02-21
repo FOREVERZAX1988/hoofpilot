@@ -62,7 +62,7 @@ class ModelParser:
     model_bundle.status = 0
     model_bundle.generation = int(bundle["generation"])
     model_bundle.environment = bundle["environment"]
-    model_bundle.runner = bundle.get("runner", custom.ModelManagerSP.Runner.snpe)
+    model_bundle.runner = bundle.get("runner", custom.ModelManagerSP.Runner.tinygrad)
     model_bundle.is20hz = bundle.get("is_20hz", False)
     model_bundle.minimumSelectorVersion = int(bundle["minimum_selector_version"])
     model_bundle.overrides = ModelParser._parse_overrides(bundle.get("overrides", {}))
@@ -184,4 +184,3 @@ if __name__ == "__main__":
       print(f"Artifact: {model.artifact.fileName}, Download URI: {model.artifact.downloadUri.uri}")
       # Print metadata details
       print(f"Metadata: {model.metadata.fileName}, Download URI: {model.metadata.downloadUri.uri}")
-

@@ -2,7 +2,7 @@ import os
 import operator
 import platform
 
-from cereal import car, custom
+from cereal import car
 from openpilot.common.params import Params
 from openpilot.system.hardware import PC, TICI
 from openpilot.system.manager.process import PythonProcess, NativeProcess, DaemonProcess
@@ -10,7 +10,6 @@ from openpilot.system.hardware.hw import Paths
 
 from hoofpilot.mapd.mapd_manager import MAPD_PATH
 
-from hoofpilot.models.helpers import get_active_model_runner
 from hoofpilot.sunnylink.utils import sunnylink_need_register, sunnylink_ready, use_sunnylink_uploader
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
@@ -83,18 +82,6 @@ def use_sunnylink_uploader_shim(started, params, CP: car.CarParams) -> bool:
   """Shim for use_sunnylink_uploader to match the process manager signature."""
   return use_sunnylink_uploader(params)
 
-def is_snpe_model(started, params, CP: car.CarParams) -> bool:
-  """Check if the active model runner is SNPE."""
-  return bool(get_active_model_runner(params, not started) == custom.ModelManagerSP.Runner.snpe)
-
-def is_tinygrad_model(started, params, CP: car.CarParams) -> bool:
-  """Check if the active model runner is SNPE."""
-  return bool(get_active_model_runner(params, not started) == custom.ModelManagerSP.Runner.tinygrad)
-
-def is_stock_model(started, params, CP: car.CarParams) -> bool:
-  """Check if the active model runner is stock."""
-  return bool(get_active_model_runner(params, not started) == custom.ModelManagerSP.Runner.stock)
-
 def mapd_ready(started: bool, params: Params, CP: car.CarParams) -> bool:
   return bool(os.path.exists(Paths.mapd_root()))
 
@@ -125,7 +112,7 @@ procs = [
   PythonProcess("micd", "system.micd", iscar),
   PythonProcess("timed", "system.timed", always_run, enabled=not PC),
 
-  PythonProcess("modeld", "selfdrive.modeld.modeld", and_(only_onroad, is_stock_model)),
+  NativeProcess("modeld", "hoofpilot/modeld_v2", ["./modeld"], only_onroad),
   PythonProcess("dmonitoringmodeld", "selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(WEBCAM or not PC)),
 
   PythonProcess("sensord", "system.sensord.sensord", only_onroad, enabled=not PC),
@@ -173,8 +160,6 @@ procs = [
 procs += [
   # Models
   PythonProcess("models_manager", "hoofpilot.models.manager", only_offroad),
-  NativeProcess("modeld_snpe", "hoofpilot/modeld", ["./modeld"], and_(only_onroad, is_snpe_model)),
-  NativeProcess("modeld_tinygrad", "hoofpilot/modeld_v2", ["./modeld"], and_(only_onroad, is_tinygrad_model)),
 
   # Backup
   PythonProcess("backup_manager", "hoofpilot.sunnylink.backups.manager", and_(only_offroad, sunnylink_ready_shim)),

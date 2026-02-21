@@ -97,7 +97,7 @@ find . -name '__pycache__' -delete
 rm -rf .sconsign.dblite Jenkinsfile release/ || true
 rm -f selfdrive/modeld/models/driving_vision.onnx || true
 rm -f selfdrive/modeld/models/driving_policy.onnx || true
-rm -f hoofpilot/modeld*/models/supercombo.onnx || true
+rm -f hoofpilot/modeld_v2/models/supercombo.onnx || true
 
 find third_party/ -name '*x86*' -exec rm -rf {} +
 find third_party/ -name '*Darwin*' -exec rm -rf {} +
